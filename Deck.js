@@ -4,7 +4,7 @@
 class Deck{
     constructor(){
         this.suits = ["Spades","Hearts","Diamonds","Clubs"];
-        this.ranks = ["A","1","2","3","4","5","6","7","8","9","10","J","Q","K"];
+        this.ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
         this.values = [1,2,3,4,5,6,7,8,9,10,11,12,13];
         this.cards = [];
         
