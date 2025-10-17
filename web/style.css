@@ -1,0 +1,137 @@
+/* Core structure and typography */
+html {
+    font-size: 10px;
+    font-family: 'Open Sans', sans-serif;
+    
+    /* ***** THEME INTEGRATION: Dark Navy Blue Background ***** */
+    background-color: #1A237E; /* Dark Navy Blue base color */
+    background-image: 
+        repeating-linear-gradient(
+            45deg, 
+            rgba(255, 255, 255, 0.05) 0, /* White pattern overlay for 'blizzard' look */
+            rgba(255, 255, 255, 0.05) 2px, 
+            transparent 2px, 
+            transparent 10px
+        );
+    /* -------------------------------------------------------- */
+}
+
+body {
+    width: 700px;
+    margin: 30px auto;
+    /* ***** THEME INTEGRATION: Light Sky Blue/White Main Container ***** */
+    background-color: #E0F7FA; /* Light Sky Blue */
+    padding: 30px 40px;
+    border: 5px solid #004D40; /* Dark Teal Border */
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+}
+
+h1 {
+    font-size: 60px;
+    text-align: center;
+    margin: 0;
+    padding: 20px 0;
+    /* ***** THEME INTEGRATION: Teal Heading Color ***** */
+    color: #00838F;
+    text-shadow: 4px 4px 0px #333; /* Darker shadow */
+    letter-spacing: 3px;
+}
+
+h2 {
+    font-size: 32px;
+    color: #00838F; /* Teal accent */
+    border-bottom: 3px solid #00838F;
+    padding-bottom: 10px;
+    margin-top: 30px;
+}
+
+h3 {
+    font-size: 24px;
+    color: #333;
+    margin-top: 20px;
+}
+
+p, li {
+    font-size: 18px;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+    color: #333;
+}
+
+/* Image Styling */
+img {
+    display: block;
+    margin: 20px auto;
+    border: 5px solid #D32F2F; /* Retaining red border for visual pop */
+    border-radius: 10px;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* Interactive Section Styling */
+.game-section {
+    background-color: #FFFFFF; /* Retain pure white for readability */
+    padding: 20px;
+    margin-bottom: 25px;
+    border-radius: 8px;
+    border: 1px solid #B2EBF2; /* Light blue border */
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Button Styling */
+.card-deck-buttons {
+    display: flex;
+    justify-content: space-around;
+    padding: 15px 0;
+}
+
+.card-deck-buttons button {
+    font-size: 20px;
+    padding: 15px 30px;
+    margin: 5px;
+    cursor: pointer;
+    
+    color: white;
+    /* ***** THEME INTEGRATION: Navy Blue Button Gradient ***** */
+    background: linear-gradient(to bottom, #3949AB, #1A237E); 
+    border: 2px solid black;
+    border-radius: 10px;
+    text-transform: uppercase;
+    font-weight: bold;
+    box-shadow: 4px 4px 0px #004D40; /* Teal shadow */
+    transition: all 0.1s ease;
+}
+
+.card-deck-buttons button:hover {
+    background: linear-gradient(to bottom, #4758C1, #2C3A8D);
+    box-shadow: 2px 2px 0px #004D40;
+    transform: translate(2px, 2px);
+}
+
+.card-deck-buttons button:active {
+    background: #1A237E;
+    box-shadow: none;
+    transform: translate(4px, 4px);
+}
+
+/* Specific styling for the result display */
+#drawn-card {
+    font-size: 28px;
+    font-weight: bold;
+    color: #D32F2F; /* Retaining red for visual impact */
+    background-color: #F8BBD0; /* Light pink/mauve background for card result */
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px dashed #00838F; /* Teal dashed border */
+}
+
+#cards-remaining {
+    font-weight: bold;
+    color: #1A237E; /* Navy blue text */
+}
+
+#technical-footer p {
+    text-align: center;
+    font-style: italic;
+    color: #444;
+}
