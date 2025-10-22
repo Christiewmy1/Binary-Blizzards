@@ -1,208 +1,269 @@
+/*
 import 'dotenv/config';
 import express from 'express';
 import {
-  ButtonStyleTypes,
-  InteractionResponseFlags,
-  InteractionResponseType,
   InteractionType,
-  MessageComponentTypes,
+  InteractionResponseType,
+  InteractionCallbackType,
   verifyKeyMiddleware,
 } from 'discord-interactions';
-import { getRandomEmoji, DiscordRequest } from './utils.js';
-import { getShuffledOptions, getResult } from './game.js';
+import { getRandomEmoji } from './utils.js';
+import { getShuffledOptions } from './game.js';
+import { Deck } from './card.js';
 
-// Create an express app
 const app = express();
-// Get port, or default to 3000
 const PORT = process.env.PORT || 3000;
-// To keep track of our active games
-const activeGames = {};
+const games = new Map();
 
-/**
- * Interactions endpoint URL where Discord will send HTTP requests
- * Parse request body and verifies incoming requests using discord-interactions package
- */
-app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
-  // Interaction id, type and data
-  const { id, type, data } = req.body;
+app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async (req, res) => {
+  try {
+    console.log('📥 Incoming Interaction');
+    const body = req.body;
+    const { type, data } = body;
 
-  /**
-   * Handle verification requests
-   */
-  if (type === InteractionType.PING) {
-    return res.send({ type: InteractionResponseType.PONG });
-  }
-
-  /**
-   * Handle slash command requests
-   * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
-   */
-  if (type === InteractionType.APPLICATION_COMMAND) {
-    const { name } = data;
-
-    // "test" command
-    if (name === 'test') {
-      // Send a message into the channel where command was triggered from
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-          components: [
-            {
-              type: MessageComponentTypes.TEXT_DISPLAY,
-              // Fetches a random emoji to send from a helper function
-              content: `hello world ${getRandomEmoji()}`
-            }
-          ]
-        },
-      });
+    // ✅ PING check
+    if (type === InteractionType.PING) {
+      return res.send({ type: InteractionResponseType.PONG });
     }
-      
-      // "challenge" command
-      if (name === 'challenge' && id) {
-        // Interaction context
-        const context = req.body.context;
-        // User ID is in user field for (G)DMs, and member for servers
-        const userId = context === 0 ? req.body.member.user.id : req.body.user.id;
-        // User's object choice
-        const objectName = req.body.data.options[0].value;
 
-        // Create active game using message ID as the game ID
-        activeGames[id] = {
-          id: userId,
-          objectName,
-        };
+    // ✅ Slash command handling
+    if (type === InteractionType.APPLICATION_COMMAND) {
+      const { name } = data;
 
+      // /test command
+      if (name === 'test') {
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-            components: [
-              {
-                type: MessageComponentTypes.TEXT_DISPLAY,
-                // Fetches a random emoji to send from a helper function
-                content: `Rock papers scissors challenge from <@${userId}>`,
-              },
-              {
-                type: MessageComponentTypes.ACTION_ROW,
-                components: [
-                  {
-                    type: MessageComponentTypes.BUTTON,
-                    // Append the game ID to use later on
-                    custom_id: `accept_button_${req.body.id}`,
-                    label: 'Accept',
-                    style: ButtonStyleTypes.PRIMARY,
-                  },
-                ],
-              },
-            ],
-          },
+          data: { content: `Hello world ${getRandomEmoji()}` },
         });
       }
 
-    console.error(`unknown command: ${name}`);
-    return res.status(400).json({ error: 'unknown command' });
-  }
+      // /guess command
+      if (name === 'guess') {
+        const userId = body.member.user.id;
+        const suitGuess = data.options.find(o => o.name === 'suit').value.toLowerCase();
+        const valueGuess = data.options.find(o => o.name === 'value').value.toUpperCase();
 
-    if (type === InteractionType.MESSAGE_COMPONENT) {
-      // custom_id set in payload when sending message component
-      const componentId = data.custom_id;
+        if (!games.has(userId)) {
+          const deck = new Deck();
+          const secretCard = deck.draw();
+          games.set(userId, secretCard);
+        }
 
-      if (componentId.startsWith('accept_button_')) {
-        // get the associated game ID
-        const gameId = componentId.replace('accept_button_', '');
-        // Delete message with token in request body
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-        try {
-          await res.send({
+        const secretCard = games.get(userId);
+        let responseText;
+
+        if (
+          suitGuess === secretCard.suit.toLowerCase() &&
+          valueGuess === secretCard.value.toUpperCase()
+        ) {
+          games.delete(userId);
+          responseText = `🎉 You got it! It was **${secretCard.value} of ${secretCard.suit}**.`;
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: { content: responseText },
+          });
+        } else {
+          // Generate hint if correct suit
+          if (suitGuess === secretCard.suit.toLowerCase()) {
+            responseText = `Hint: you got the correct suit of the card!`;
+          } else {
+            responseText = `❌ Nope! It wasn’t ${valueGuess} of ${suitGuess}. Try again!`;
+          }
+
+          // Provide action buttons for "make another guess" or "end game"
+          return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
-              // Indicates it'll be an ephemeral message
-              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              content: responseText,
               components: [
                 {
-                  type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: 'What is your object of choice?',
-                },
-                {
-                  type: MessageComponentTypes.ACTION_ROW,
+                  type: 1,
                   components: [
                     {
-                      type: MessageComponentTypes.STRING_SELECT,
-                      // Append game ID
-                      custom_id: `select_choice_${gameId}`,
-                      options: getShuffledOptions(),
+                      type: 2,
+                      label: 'Make another guess',
+                      style: 1,
+                      custom_id: `guess_again_${userId}`,
+                    },
+                    {
+                      type: 2,
+                      label: 'End the game',
+                      style: 4,
+                      custom_id: `end_game_${userId}`,
                     },
                   ],
                 },
               ],
             },
           });
-          // Delete previous message
-          await DiscordRequest(endpoint, { method: 'DELETE' });
-        } catch (err) {
-          console.error('Error sending message:', err);
-        }
-      } else if (componentId.startsWith('select_choice_')) {
-        // get the associated game ID
-        const gameId = componentId.replace('select_choice_', '');
-
-        if (activeGames[gameId]) {
-          // Interaction context
-          const context = req.body.context;
-          // Get user ID and object choice for responding user
-          // User ID is in user field for (G)DMs, and member for servers
-          const userId = context === 0 ? req.body.member.user.id : req.body.user.id;
-          const objectName = data.values[0];
-          // Calculate result from helper function
-          const resultStr = getResult(activeGames[gameId], {
-            id: userId,
-            objectName,
-          });
-
-          // Remove game from storage
-          delete activeGames[gameId];
-          // Update message with token in request body
-          const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-
-          try {
-            // Send results
-            await res.send({
-              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-              data: {
-                flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-                components: [
-                  {
-                    type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: resultStr
-                  }
-                ]
-               },
-            });
-            // Update ephemeral message
-            await DiscordRequest(endpoint, {
-              method: 'PATCH',
-              body: {
-                components: [
-                  {
-                    type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: 'Nice choice ' + getRandomEmoji()
-                  }
-                ],
-              },
-            });
-          } catch (err) {
-            console.error('Error sending message:', err);
-          }
         }
       }
-      
-      return;
     }
-  console.error('unknown interaction type', type);
-  return res.status(400).json({ error: 'unknown interaction type' });
+
+    // ✅ Component (button) interactions
+    if (type === InteractionType.MESSAGE_COMPONENT) {
+      const userId = body.member.user.id;
+      const customId = data.custom_id;
+      const secretCard = games.get(userId);
+
+      if (!secretCard) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { content: 'No active game found! Use `/guess` to start a new one.' },
+        });
+      }
+
+      if (customId.startsWith('end_game_')) {
+        games.delete(userId);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `🛑 Game ended. The secret card was **${secretCard.value} of ${secretCard.suit}**.`,
+          },
+        });
+      }
+
+      if (customId.startsWith('guess_again_')) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: '🔁 Okay! Make another guess using `/guess`!',
+          },
+        });
+      }
+    }
+
+    res.status(400).send('Unknown interaction type');
+  } catch (err) {
+    console.error('❌ Error handling interaction:', err);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
+app.get('/', (_, res) => res.send('Bot is running!'));
+
+app.listen(PORT, () => console.log(`🚀 Listening on port ${PORT}`));
+
+*/
+import 'dotenv/config';
+import express from 'express';
+import {
+  InteractionType,
+  InteractionResponseType,
+  verifyKeyMiddleware,
+} from 'discord-interactions';
+import { getRandomEmoji } from './utils.js';
+import { getShuffledOptions } from './game.js';
+import { Deck } from './card.js';
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const games = new Map();
+
+// ✅ Middleware (verifyKeyMiddleware handles raw body internally)
+app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async (req, res) => {
+  try {
+    console.log('📥 Incoming Interaction');
+    const body = req.body; // Already parsed JSON object
+    const { type, data } = body;
+
+    if (type === InteractionType.PING) {
+      return res.send({ type: InteractionResponseType.PONG });
+    }
+
+    if (type === InteractionType.APPLICATION_COMMAND) {
+      const { name } = data;
+
+      // /test
+      if (name === 'test') {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { content: `Hello world ${getRandomEmoji()}` },
+        });
+      }
+
+      // /challenge
+      if (name === 'challenge') {
+        const options = getShuffledOptions();
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Choose your fighter!',
+            components: [
+              {
+                type: 1,
+                components: [{ type: 3, custom_id: 'starter', options }],
+              },
+            ],
+          },
+        });
+      }
+
+      // /rules
+      if (name === 'rules') {
+        const rulesText = `Guess the Card rules:\n\n- I pick a secret card from a standard 52-card deck.\n- You guess by providing a suit (hearts, spades, clubs, diamonds) and a value (A, 2-10, J, Q, K).\n- If both suit and value match, you win and the game ends.\n- If only the suit is correct, I'll tell you it's the correct suit as a hint.\n- Otherwise I'll tell you the guess was incorrect and you can try again.\n- Use /guess to make a guess. Good luck!`;
+
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { content: rulesText },
+        });
+      }
+
+      // /guess
+      if (name === 'guess') {
+        const userId = body.member.user.id;
+        const suitGuess = data.options.find(o => o.name === 'suit').value.toLowerCase();
+        const valueGuess = data.options.find(o => o.name === 'value').value.toUpperCase();
+
+        if (!games.has(userId)) {
+          const deck = new Deck();
+          const secretCard = deck.draw();
+          games.set(userId, secretCard);
+        }
+
+        const secretCard = games.get(userId);
+        if (
+          suitGuess === secretCard.suit.toLowerCase() &&
+          valueGuess === secretCard.value.toUpperCase()
+        ) {
+          games.delete(userId);
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `🎉 You got it! It was **${secretCard.value} of ${secretCard.suit}**.`,
+            },
+          });
+        }else if(suitGuess == secretCard.suit){
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                content: `❌ Nope! ${suitGuess} was the correct suit but ${valueGuess} was not the correct value. Try again!`,
+              },
+            });
+        }
+          
+        else {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `❌ Nope! It wasn’t ${valueGuess} of ${suitGuess}. Try again!`,
+            },
+          });
+        }
+      }
+    }
+
+    res.status(400).send('Unknown interaction type');
+  } catch (err) {
+    console.error('❌ Error handling interaction:', err);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+// Health check
+app.get('/', (_, res) => res.send('Bot is running!'));
+
 app.listen(PORT, () => {
-  console.log('Listening on port', PORT);
+  console.log(`🚀 Listening on port ${PORT}`);
 });
