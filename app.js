@@ -234,7 +234,16 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async (re
               content: `🎉 You got it! It was **${secretCard.value} of ${secretCard.suit}**.`,
             },
           });
-        } else {
+        }else if(suitGuess == secretCard.suit){
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                content: `❌ Nope! ${suitGuess} was the correct suit but ${valueGuess} was not the correct value. Try again!`,
+              },
+            });
+        }
+          
+        else {
           return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
