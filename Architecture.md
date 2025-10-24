@@ -3,7 +3,7 @@ index.html: The structure and content of the web page, introducing the bot's log
 style.css: The visual presentation and design of the html.
 main.js: The core application logic, including the card game simulation.
 
-Client-Server interatction Architecture
+Client-Server interaction Architecture
 ```mermaid
 flowchart LR;
 A(["Discord User"])
