@@ -3,13 +3,17 @@ index.html: The structure and content of the web page, introducing the bot's log
 style.css: The visual presentation and design of the html.
 main.js: The core application logic, including the card game simulation.
 
-Client-Server interaction Architecture
+Client-Server interaction Architecture:
+
+This flowchart shows the path from the server running on a personal machine to the Discord server to the client. 
 ```mermaid
 flowchart LR;
 A(["Discord User"])
 A-->B{"Discord Server/Discord API"}
-B-->C{"Our Discord bot code"}
-B-->D{"Our bot server running on PC"}
+B-->C(["Our Discord bot code"])
+B-->D(["Our bot server running locally"])
+D-->C
+
 ```
 
 Code architecture
