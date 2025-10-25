@@ -24,3 +24,21 @@ graph TD
 	G --> H[index.html/style.css]
 	D --> I[utils.js]
 ```
+
+
+##### START: Basic Discord Command Path Flowchart
+The following flowchart depicts the path a valid command made by a Discord user will travel while using this Bot application.
+The client makes a valid command request to Discord. Discord's API sends this request to ngrok's public server.
+ngrok's server sends the request along a tunnel to the developer's local server.
+The local server will return the response which will travel the same path, but in reverse.
+
+
+```mermaid
+%% Bot Task 4
+flowchart TD
+    A[Bot app on local machine]<-->B
+    B[local web server on machine]<--->|ngrok's secure tunnel| C(ngrok's public server)
+    C <--> D[Discord's Gateway API Server]
+    D <-->|valid command| E[User]
+```
+##### END: Basic Discord Command Path Flowchart
