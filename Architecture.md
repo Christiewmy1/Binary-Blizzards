@@ -10,6 +10,17 @@ A(["Discord User"])
 A-->B{"Discord Server/Discord API"}
 B-->C{"Our Discord bot code"}
 B-->D{"Our bot server running on PC"}
+```
 
-
-  
+Code architecture
+```mermaid
+graph TD
+	A[Discord API] --> B[app.js]
+	B --> C[commands.js]
+	C --> D[game.js]
+	D --> E[Deck.js]
+	D --> F[card.js]
+	B --> G[web/main.js]
+	G --> H[index.html/style.css]
+	D --> I[utils.js]
+```
